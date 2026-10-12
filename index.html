@@ -42,12 +42,17 @@
           <span class="mode-name">Coordinates</span>
           <span class="mode-meta">Click the square that's named</span>
         </button>
+
+        <button type="button" class="mode-option" data-training="knights-tour" aria-pressed="false">
+          <span class="mode-name">Knight's tour</span>
+          <span class="mode-meta">Visit every square once</span>
+        </button>
       </aside>
 
       <div class="layout">
         <section class="board-area">
           <div id="board" class="board"></div>
-          <p id="coord-prompt" class="coord-prompt training-only" aria-live="polite"></p>
+          <p id="coord-prompt" class="coord-prompt trainer-ui" data-training="coordinates" aria-live="polite" hidden></p>
           <div id="promotion" class="promotion" hidden>
             <div class="promotion-box" role="dialog" aria-label="Choose promotion piece">
               <p>Promote to</p>
@@ -58,11 +63,26 @@
         </section>
 
         <aside class="panel">
-          <p id="coord-status" class="status training-only" aria-live="polite"></p>
-          <p class="hint training-only">Click the square named under the board. Keep going until you miss one.</p>
-          <div class="controls training-only">
-            <button type="button" id="coord-replay" data-action="replay" hidden>Replay</button>
-            <button type="button" data-action="flip">Flip board</button>
+          <div class="trainer-panel trainer-ui" data-training="coordinates" hidden>
+            <p id="coord-status" class="status" aria-live="polite"></p>
+            <p class="hint">Click the square named under the board. Keep going until you miss one.</p>
+            <div class="controls">
+              <button type="button" id="coord-replay" data-action="replay" hidden>Replay</button>
+              <button type="button" data-action="flip">Flip board</button>
+            </div>
+          </div>
+
+          <div class="trainer-panel trainer-ui" data-training="knights-tour" hidden>
+            <p id="tour-status" class="status" aria-live="polite"></p>
+            <p class="hint">
+              Place your knight on any square, then jump to every other square exactly once.
+              Visited squares are numbered in the order you reached them.
+            </p>
+            <div class="controls">
+              <button type="button" data-action="tour-undo">Undo</button>
+              <button type="button" data-action="tour-restart">New tour</button>
+              <button type="button" data-action="flip">Flip board</button>
+            </div>
           </div>
 
           <p id="status" class="status" aria-live="polite"></p>

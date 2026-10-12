@@ -321,10 +321,23 @@ body:not([data-variant^='disguised']) .disguised-only {
   display: none;
 }
 
-/* Coordinates trainer: its own panel, and no labels on the board to read the answer from. */
-body.is-training .panel > :not(.training-only),
-body.is-training #board coords,
-body:not(.is-training) .training-only {
+/* Training games replace the game panel with their own. */
+body[data-training] .panel > :not(.trainer-ui) {
+  display: none;
+}
+
+.trainer-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.trainer-panel[hidden] {
+  display: none;
+}
+
+/* Coordinates trainer: no labels on the board to read the answer from. */
+body[data-training='coordinates'] #board coords {
   display: none;
 }
 
@@ -341,6 +354,10 @@ body:not(.is-training) .training-only {
 
 #board square.coord-miss {
   background: rgb(210 50 40 / 0.6);
+}
+
+#board square.tour-visited {
+  background: rgb(0 0 0 / 0.14);
 }
 
 .card {

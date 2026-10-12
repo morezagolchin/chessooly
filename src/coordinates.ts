@@ -15,7 +15,6 @@ interface TrainerElements {
 
 /** Coordinates trainer: a square is named under the board and the player clicks it. One wrong click ends the round. */
 export class CoordinateTrainer {
-  active = false;
   private target: Key = 'a1';
   private score = 0;
   private missed: Key | null = null;
@@ -27,7 +26,6 @@ export class CoordinateTrainer {
 
   /** Clear the board and start a round from a score of zero. */
   start() {
-    this.active = true;
     this.score = 0;
     this.missed = null;
     this.ground.selectSquare(null);
@@ -41,13 +39,11 @@ export class CoordinateTrainer {
   }
 
   stop() {
-    this.active = false;
     this.ground.set({ highlight: { custom: new Map() } });
   }
 
-  /** Every square clicked on the board, in any mode. */
   click(key: Key) {
-    if (!this.active || this.missed) return;
+    if (this.missed) return;
     if (key === this.target) {
       this.score++;
       this.next();

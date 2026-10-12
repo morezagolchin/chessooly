@@ -9,10 +9,22 @@ import 'chessground/assets/chessground.cburnett.css';
 import './style.css';
 
 import { CoordinateTrainer } from './coordinates';
+import { KnightsTour } from './knights-tour';
 import { Online, inviteIdFromUrl, inviteLink, type Message, type Variant } from './online';
 
 type PromotionPiece = 'q' | 'r' | 'b' | 'n';
 type Side = 'w' | 'b';
+type Training = 'coordinates' | 'knights-tour';
+
+/** A training game from the sidebar. It takes over the board and panel while it's open. */
+interface Trainer {
+  start(): void;
+  stop(): void;
+  /** A square clicked on the board. */
+  click?(key: Key): void;
+  /** A piece moved on the board. */
+  move?(orig: Key, dest: Key): void;
+}
 
 const chess = new Chess();
 
@@ -20,6 +32,8 @@ const chess = new Chess();
 const state = {
   mode: 'local' as 'local' | 'online',
   variant: 'classic' as Variant,
+  /** The open training game, if any. The chess game is kept as it was underneath. */
+  training: null as Training | null,
   role: null as 'host' | 'guest' | null,
   myColor: 'w' as Side,
   resigned: null as Side | null,
@@ -40,6 +54,7 @@ const onlineInviteEl = $<HTMLDivElement>('#online-invite');
 const inviteLinkEl = $<HTMLInputElement>('#invite-link');
 const onlineInfoEl = $<HTMLParagraphElement>('#online-info');
 const modeButtons = document.querySelectorAll<HTMLButtonElement>('.mode-option');
+const trainerEls = document.querySelectorAll<HTMLElement>('.trainer-ui');
 
 const ground: Api = Chessground(boardEl, {
   movable: {
@@ -49,14 +64,17 @@ const ground: Api = Chessground(boardEl, {
   },
   premovable: { enabled: false },
   highlight: { lastMove: true, check: true },
-  events: { select: (key) => trainer.click(key) },
+  events: { select: (key) => state.training && trainers[state.training].click?.(key) },
 });
 
-const trainer = new CoordinateTrainer(ground, {
+const coordinates = new CoordinateTrainer(ground, {
   prompt: $('#coord-prompt'),
   status: $('#coord-status'),
   replay: $<HTMLButtonElement>('#coord-replay'),
 });
+const knightsTour = new KnightsTour(ground, $('#tour-status'));
+const trainers: Record<Training, Trainer> = { coordinates, 'knights-tour': knightsTour };
+const trainingTitles: Record<Training, string> = { coordinates: 'coordinates', 'knights-tour': "knight's tour" };
 
 const colorName = (side: Side): Color => (side === 'w' ? 'white' : 'black');
 const turnColor = (): Color => colorName(chess.turn());
@@ -107,6 +125,7 @@ function disguise(fen: string, sides: Side[]): string {
 }
 
 function onBoardMove(orig: Key, dest: Key) {
+  if (state.training) return trainers[state.training].move?.(orig, dest);
   const from = orig as Square;
   const to = dest as Square;
   const candidates = chess.moves({ square: from, verbose: true }).filter((m) => m.to === to);
@@ -213,22 +232,26 @@ function sync() {
   const online = state.mode === 'online';
 
   document.body.classList.toggle('is-online', online);
-  document.body.classList.toggle('is-training', trainer.active);
+  if (state.training) document.body.dataset.training = state.training;
+  else delete document.body.dataset.training;
   document.body.dataset.variant = state.variant;
+  for (const el of trainerEls) el.hidden = el.dataset.training !== state.training;
   for (const button of modeButtons) {
-    const active = trainer.active ? button.dataset.training === 'coordinates' : button.dataset.variant === state.variant;
+    const active = state.training
+      ? button.dataset.training === state.training
+      : button.dataset.variant === state.variant;
     button.classList.toggle('is-active', active);
     button.setAttribute('aria-pressed', String(active));
     button.disabled = online;
   }
-  modeEl.textContent = trainer.active
-    ? 'Training · coordinates'
+  modeEl.textContent = state.training
+    ? `Training · ${trainingTitles[state.training]}`
     : online
       ? `Online game · you play ${state.myColor === 'w' ? 'White' : 'Black'}`
       : 'Local game · pass and play';
 
-  // The trainer draws its own board; the game is left as it was until the player comes back to it.
-  if (trainer.active) return;
+  // Training games draw their own board; the chess game is left as it was until the player comes back to it.
+  if (state.training) return;
 
   const last = chess.history({ verbose: true }).at(-1);
   const color = turnColor();
@@ -285,7 +308,7 @@ const online = new Online({
 });
 
 function startOnlineGame(myColor: Side, pgn = '') {
-  trainer.stop();
+  stopTraining();
   state.mode = 'online';
   state.myColor = myColor;
   state.resigned = null;
@@ -378,23 +401,30 @@ function switchVariant(variant: Variant) {
   if (state.mode === 'online') return;
   if (variant === state.variant) {
     // Back from training to the game that was left there.
-    if (trainer.active) {
-      trainer.stop();
+    if (state.training) {
+      stopTraining();
       sync();
     }
     return;
   }
   if (chess.history().length && !isOver() && !confirm('Switch game mode? The current game will be lost.')) return;
-  trainer.stop();
+  stopTraining();
   state.variant = variant;
   resetGame();
 }
 
-function startTraining() {
-  if (state.mode === 'online' || trainer.active) return;
+function startTraining(training: Training) {
+  if (state.mode === 'online' || training === state.training) return;
+  stopTraining();
   promotionEl.hidden = true;
-  trainer.start();
+  state.training = training;
+  trainers[training].start();
   sync();
+}
+
+function stopTraining() {
+  if (state.training) trainers[state.training].stop();
+  state.training = null;
 }
 
 const actions: Record<string, () => void> = {
@@ -446,7 +476,14 @@ const actions: Record<string, () => void> = {
     statusEl.textContent = 'Rematch offered — waiting for your opponent…';
   },
   replay() {
-    trainer.start();
+    coordinates.start();
+  },
+  'tour-undo'() {
+    knightsTour.undo();
+  },
+  'tour-restart'() {
+    if (knightsTour.visited > 1 && !confirm('Start a new tour?')) return;
+    knightsTour.start();
   },
   'cancel-promotion'() {
     promotionEl.hidden = true;
@@ -460,7 +497,8 @@ document.addEventListener('click', (e) => {
   if (action) actions[action]?.();
   const variant = target.closest<HTMLElement>('.mode-option[data-variant]')?.dataset.variant;
   if (variant) switchVariant(variant as Variant);
-  if (target.closest('.mode-option[data-training]')) startTraining();
+  const training = target.closest<HTMLElement>('.mode-option[data-training]')?.dataset.training;
+  if (training) startTraining(training as Training);
 });
 
 window.addEventListener('beforeunload', () => online.close());

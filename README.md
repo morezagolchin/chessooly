@@ -90,7 +90,8 @@ chessooly does not collect, store or share any personal data. There is no backen
 - [ ] Chess960, King of the Hill, Three-Check
 - [ ] Atomic, Horde, Fog of War
 - [x] Coordinate trainer
-- [ ] Training games (knight's tour, puzzles, blindfold)
+- [x] Knight's tour
+- [ ] Training games (puzzles, blindfold)
 - [ ] Time controls (clocks)
 - [ ] Mobile-friendly layout
 
