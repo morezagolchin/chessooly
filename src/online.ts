@@ -2,13 +2,14 @@ import type { Square } from 'chess.js';
 import Peer, { type DataConnection } from 'peerjs';
 
 /** Game modes from the sidebar. The host's choice is used for an online game. */
-export type Variant = 'classic' | 'disguised' | 'disguised-opponent' | 'disguised-self';
+export type Variant = 'classic' | 'disguised' | 'disguised-opponent' | 'disguised-self' | 'invisible' | 'points';
 
 /** Messages exchanged between the two browsers. Nothing here is ever stored on a server. */
 export type Message =
   | { type: 'hello'; guestColor: 'w' | 'b'; pgn: string; variant: Variant }
   | { type: 'move'; san: string }
   | { type: 'illegal'; from: Square; to: Square }
+  | { type: 'peek' }
   | { type: 'resign' }
   | { type: 'rematch-offer' }
   | { type: 'rematch-accept' }

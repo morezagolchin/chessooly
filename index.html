@@ -36,6 +36,16 @@
           <span class="mode-meta">Your own pieces look like pawns</span>
         </button>
 
+        <button type="button" class="mode-option" data-variant="invisible" aria-pressed="false">
+          <span class="mode-name">Invisible</span>
+          <span class="mode-meta">You can't see any pieces</span>
+        </button>
+
+        <button type="button" class="mode-option" data-variant="points" aria-pressed="false">
+          <span class="mode-name">Points</span>
+          <span class="mode-meta">Invisible pieces, peeks cost points</span>
+        </button>
+
         <p class="sidebar-label">Training</p>
 
         <button type="button" class="mode-option" data-training="coordinates" aria-pressed="false">
@@ -87,9 +97,26 @@
 
           <p id="status" class="status" aria-live="polite"></p>
 
+          <div class="points-bar points-only">
+            <p id="points" class="points"></p>
+            <button type="button" id="peek" data-action="peek">Peek</button>
+          </div>
+
           <p class="hint disguised-only">
             Disguised pieces look like pawns and legal moves aren't shown — keep track of what's what.
             Checkmate wins, and so does your opponent trying an illegal move.
+          </p>
+
+          <p class="hint invisible-only">
+            The pieces are invisible — keep the position in your head. To move, click the piece's square and then
+            where it goes (click the same square again to cancel). Checkmate wins, and so does your opponent trying
+            an illegal move.
+          </p>
+
+          <p class="hint points-only">
+            The pieces are invisible: click a piece's square, then where it goes. A peek shows them for 3 seconds but
+            gives your opponent 1 point, and an illegal move gives them 2. Checkmate is worth 10. When the game ends,
+            the higher score wins.
           </p>
 
           <div class="controls local-only">

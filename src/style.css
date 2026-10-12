@@ -317,8 +317,29 @@ body:not(.is-online) .online-only {
   display: none;
 }
 
-body:not([data-variant^='disguised']) .disguised-only {
+body:not([data-variant^='disguised']) .disguised-only,
+body:not([data-variant='invisible']) .invisible-only,
+body:not([data-variant='points']) .points-only {
   display: none;
+}
+
+.points-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.points {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.points-bar button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* Training games replace the game panel with their own. */

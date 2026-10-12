@@ -16,6 +16,14 @@ type PromotionPiece = 'q' | 'r' | 'b' | 'n';
 type Side = 'w' | 'b';
 type Training = 'coordinates' | 'knights-tour';
 
+const EMPTY_BOARD = '8/8/8/8/8/8/8/8';
+
+/** The points game: what each event is worth, and how long a peek shows the pieces. */
+const PEEK_POINTS = 1;
+const ILLEGAL_POINTS = 2;
+const MATE_POINTS = 10;
+const PEEK_MS = 3000;
+
 /** A training game from the sidebar. It takes over the board and panel while it's open. */
 interface Trainer {
   start(): void;
@@ -39,6 +47,14 @@ const state = {
   resigned: null as Side | null,
   /** Disguised modes: an illegal move that was tried, which loses the game for that side. */
   illegal: null as { side: Side; from: Square; to: Square } | null,
+  /** Invisible mode: the square clicked as the start of a move, waiting for its destination. */
+  picked: null as Square | null,
+  /** The points game: each side's score from the opponent's peeks and illegal moves. Checkmate's points come on top. */
+  points: { w: 0, b: 0 } as Record<Side, number>,
+  /** The points game: the last peek or illegal move, shown until the position changes. */
+  notice: null as { text: string; fen: string } | null,
+  /** The points game: the position the pieces are being shown in. Making a move ends the peek. */
+  peekFen: null as string | null,
   disconnected: false,
 };
 
@@ -53,6 +69,8 @@ const onlineIdleEl = $<HTMLDivElement>('#online-idle');
 const onlineInviteEl = $<HTMLDivElement>('#online-invite');
 const inviteLinkEl = $<HTMLInputElement>('#invite-link');
 const onlineInfoEl = $<HTMLParagraphElement>('#online-info');
+const pointsEl = $<HTMLParagraphElement>('#points');
+const peekEl = $<HTMLButtonElement>('#peek');
 const modeButtons = document.querySelectorAll<HTMLButtonElement>('.mode-option');
 const trainerEls = document.querySelectorAll<HTMLElement>('.trainer-ui');
 
@@ -64,7 +82,12 @@ const ground: Api = Chessground(boardEl, {
   },
   premovable: { enabled: false },
   highlight: { lastMove: true, check: true },
-  events: { select: (key) => state.training && trainers[state.training].click?.(key) },
+  events: {
+    select(key) {
+      if (state.training) trainers[state.training].click?.(key);
+      else if (clickToMove()) pickSquare(key as Square);
+    },
+  },
 });
 
 const coordinates = new CoordinateTrainer(ground, {
@@ -80,6 +103,14 @@ const colorName = (side: Side): Color => (side === 'w' ? 'white' : 'black');
 const turnColor = (): Color => colorName(chess.turn());
 const opposite = (side: Side): Side => (side === 'w' ? 'b' : 'w');
 const isOver = () => chess.isGameOver() || state.resigned !== null || state.illegal !== null;
+/** Whether the person at this board may make a move now. */
+const canPlay = () =>
+  !isOver() && !(state.mode === 'online' && (state.disconnected || chess.turn() !== state.myColor));
+/** Modes where the pieces can't be seen: moves are made by clicking squares, never by dragging pieces. */
+const clickToMove = () => state.variant === 'invisible' || state.variant === 'points';
+const peeking = () => state.peekFen === chess.fen();
+const sideName = (side: Side) => (side === 'w' ? 'White' : 'Black');
+let peekTimer = 0;
 
 /** Legal destinations for every piece of the side to move, in chessground's format. */
 function legalDests(): Map<Key, Key[]> {
@@ -99,7 +130,10 @@ function anyDests(): Map<Key, Key[]> {
   return new Map(own.map((sq) => [sq, others]));
 }
 
-/** The sides whose pieces are drawn as pawns for whoever is at the board. Everything is revealed once the game ends. */
+/**
+ * The sides whose pieces are hidden from whoever is at the board: drawn as pawns, or in Invisible mode not
+ * drawn at all. Everything is revealed once the game ends.
+ */
 function hiddenSides(): Side[] {
   if (isOver()) return [];
   // In pass and play, "you" are the side to move.
@@ -113,6 +147,10 @@ function hiddenSides(): Side[] {
       return [opposite(me)];
     case 'disguised-self':
       return [me];
+    case 'invisible':
+      return ['w', 'b'];
+    case 'points':
+      return peeking() ? [] : ['w', 'b'];
   }
 }
 
@@ -126,20 +164,112 @@ function disguise(fen: string, sides: Side[]): string {
 
 function onBoardMove(orig: Key, dest: Key) {
   if (state.training) return trainers[state.training].move?.(orig, dest);
-  const from = orig as Square;
-  const to = dest as Square;
+  tryMove(orig as Square, dest as Square);
+}
+
+/** Invisible modes: with no pieces to drag, a move is the square clicked first and then its destination. */
+function pickSquare(square: Square) {
+  if (!canPlay()) return;
+  const from = state.picked;
+  if (from && from !== square) {
+    state.picked = null;
+    tryMove(from, square);
+  } else {
+    // The first click, or the same square again to cancel.
+    state.picked = from ? null : square;
+    sync();
+  }
+}
+
+function tryMove(from: Square, to: Square) {
   const candidates = chess.moves({ square: from, verbose: true }).filter((m) => m.to === to);
 
   if (!candidates.length) {
-    // Only reachable in the disguised modes, where the board offers every square.
-    state.illegal = { side: chess.turn(), from, to };
+    // Only reachable in the disguised and invisible modes, where the board offers every square.
     if (state.mode === 'online') online.send({ type: 'illegal', from, to });
+    illegalMove(chess.turn(), from, to);
     sync();
   } else if (candidates.some((m) => m.promotion)) {
     askPromotion(from, to);
   } else {
     play(chess.move({ from, to }).san);
   }
+}
+
+/** `side` tried an illegal move. That loses the game, except in the points game, where it gives the opponent points. */
+function illegalMove(side: Side, from: Square, to: Square) {
+  if (state.variant !== 'points') {
+    state.illegal = { side, from, to };
+    return;
+  }
+  const move = `${from}–${to}`;
+  state.points[opposite(side)] += ILLEGAL_POINTS;
+  notify(
+    state.mode !== 'online'
+      ? `${sideName(side)} tried an illegal move (${move}): +${ILLEGAL_POINTS} for ${sideName(opposite(side))}`
+      : side === state.myColor
+        ? `Illegal move (${move}): +${ILLEGAL_POINTS} for your opponent`
+        : `Your opponent tried an illegal move (${move}): +${ILLEGAL_POINTS} for you`,
+  );
+}
+
+/** The points game: show the pieces for a few seconds, for a point to the opponent. */
+function startPeek() {
+  if (state.variant !== 'points' || !canPlay() || peeking()) return;
+  if (state.mode === 'online') online.send({ type: 'peek' });
+  peeked(chess.turn());
+  state.peekFen = chess.fen();
+  clearTimeout(peekTimer);
+  peekTimer = window.setTimeout(() => {
+    state.peekFen = null;
+    sync();
+  }, PEEK_MS);
+  sync();
+}
+
+function peeked(side: Side) {
+  state.points[opposite(side)] += PEEK_POINTS;
+  notify(
+    state.mode !== 'online'
+      ? `${sideName(side)} peeked: +${PEEK_POINTS} for ${sideName(opposite(side))}`
+      : side === state.myColor
+        ? `You peeked: +${PEEK_POINTS} for your opponent`
+        : `Your opponent peeked: +${PEEK_POINTS} for you`,
+  );
+}
+
+const notify = (text: string) => (state.notice = { text, fen: chess.fen() });
+
+/** The points game: each side's score, including checkmate's points for the winner. */
+function finalPoints(): Record<Side, number> {
+  const points = { ...state.points };
+  if (chess.isCheckmate()) points[opposite(chess.turn())] += MATE_POINTS;
+  return points;
+}
+
+/** The points game once it's over: how it ended on the board, and who won on points. */
+function pointsResult(): string {
+  const online = state.mode === 'online';
+  const points = finalPoints();
+  const mater = opposite(chess.turn());
+  const ending = chess.isCheckmate()
+    ? `Checkmate: +${MATE_POINTS} for ${online ? (mater === state.myColor ? 'you' : 'your opponent') : sideName(mater)}`
+    : `Game over by ${drawReason()}`;
+  const score = `${Math.max(points.w, points.b)}–${Math.min(points.w, points.b)}`;
+
+  if (points.w === points.b) return `${ending}. Tied on points, ${score}`;
+  const winner: Side = points.w > points.b ? 'w' : 'b';
+  if (!online) return `${ending}. ${sideName(winner)} wins on points, ${score}`;
+  return winner === state.myColor ? `${ending}. You win on points, ${score}!` : `${ending}. You lose on points, ${score}`;
+}
+
+/** Why the game is drawn on the board, if it is. */
+function drawReason(): string | null {
+  if (chess.isStalemate()) return 'stalemate';
+  if (chess.isInsufficientMaterial()) return 'insufficient material';
+  if (chess.isThreefoldRepetition()) return 'threefold repetition';
+  if (chess.isDraw()) return 'the 50-move rule';
+  return null;
 }
 
 /** A move made on this device: show it, and send it to the opponent when online. */
@@ -194,21 +324,21 @@ function statusText(): string {
     }
     return `Illegal move by ${mover === 'w' ? 'White' : 'Black'} (${move}) — ${mover === 'w' ? 'Black' : 'White'} wins`;
   }
+  if (state.variant === 'points' && chess.isGameOver()) return pointsResult();
   if (chess.isCheckmate()) {
     if (online) return chess.turn() === state.myColor ? 'Checkmate — you lose' : 'Checkmate — you win!';
     return `Checkmate — ${other} wins`;
   }
-  if (chess.isStalemate()) return 'Draw by stalemate';
-  if (chess.isInsufficientMaterial()) return 'Draw by insufficient material';
-  if (chess.isThreefoldRepetition()) return 'Draw by threefold repetition';
-  if (chess.isDraw()) return 'Draw by the 50-move rule';
+  const draw = drawReason();
+  if (draw) return `Draw by ${draw}`;
   if (online && state.disconnected) return 'Your opponent disconnected';
+
+  const notice = state.notice?.fen === chess.fen() ? `${state.notice.text}. ` : '';
   if (online) {
     const whose = chess.turn() === state.myColor ? 'Your move' : "Opponent's move";
-    return chess.inCheck() ? `${whose} — check!` : whose;
+    return notice + (chess.inCheck() ? `${whose} — check!` : whose);
   }
-  if (chess.inCheck()) return `${side} to move — check!`;
-  return `${side} to move`;
+  return notice + (chess.inCheck() ? `${side} to move — check!` : `${side} to move`);
 }
 
 function renderMoves() {
@@ -255,26 +385,38 @@ function sync() {
 
   const last = chess.history({ verbose: true }).at(-1);
   const color = turnColor();
-  const canMove = !isOver() && !(online && (state.disconnected || chess.turn() !== state.myColor));
+  const canMove = canPlay();
   const classic = state.variant === 'classic';
+  const invisible = clickToMove();
   const hidden = hiddenSides();
 
   ground.set({
-    fen: disguise(chess.fen(), hidden),
+    fen: invisible && hidden.length ? EMPTY_BOARD : disguise(chess.fen(), hidden),
     turnColor: color,
-    // Highlighting the checked square would give away which pawn is the king.
+    // Highlighting the checked square would give away where a hidden king is.
     check: chess.inCheck() && !hidden.includes(chess.turn()) ? color : false,
     lastMove: state.illegal ? [state.illegal.from, state.illegal.to] : last ? [last.from, last.to] : undefined,
     movable: {
-      color: canMove ? color : undefined,
+      color: canMove && !invisible ? color : undefined,
       dests: canMove ? (classic ? legalDests() : anyDests()) : new Map(),
       showDests: classic,
     },
+    highlight: { custom: new Map<Key, string>(state.picked && canMove ? [[state.picked, 'selected']] : []) },
     ...(!online && autoFlipEl.checked ? { orientation: color } : {}),
   });
 
   statusEl.textContent = statusText();
   statusEl.classList.toggle('over', isOver() || (online && state.disconnected));
+  if (state.variant === 'points') {
+    const points = finalPoints();
+    pointsEl.textContent = online
+      ? `Points — you ${points[state.myColor]} · opponent ${points[opposite(state.myColor)]}`
+      : `Points — White ${points.w} · Black ${points.b}`;
+    peekEl.disabled = !canMove || peeking();
+    peekEl.textContent = peeking()
+      ? 'Peeking…'
+      : `Peek (+${PEEK_POINTS} for ${online ? 'your opponent' : sideName(opposite(chess.turn()))})`;
+  }
   renderMoves();
 }
 
@@ -311,8 +453,7 @@ function startOnlineGame(myColor: Side, pgn = '') {
   stopTraining();
   state.mode = 'online';
   state.myColor = myColor;
-  state.resigned = null;
-  state.illegal = null;
+  clearGameState();
   state.disconnected = false;
   promotionEl.hidden = true;
   if (pgn) chess.loadPgn(pgn);
@@ -342,7 +483,12 @@ function handleMessage(msg: Message) {
       break;
     case 'illegal':
       if (state.mode !== 'online' || chess.turn() === state.myColor) break;
-      state.illegal = { side: opposite(state.myColor), from: msg.from, to: msg.to };
+      illegalMove(opposite(state.myColor), msg.from, msg.to);
+      sync();
+      break;
+    case 'peek':
+      if (state.mode !== 'online' || chess.turn() === state.myColor) break;
+      peeked(opposite(state.myColor));
       sync();
       break;
     case 'resign':
@@ -376,23 +522,32 @@ function leaveOnline() {
   online.close();
   state.mode = 'local';
   state.role = null;
-  state.resigned = null;
-  state.illegal = null;
   state.disconnected = false;
   onlineInfoEl.textContent = '';
   showOnlineIdle();
   history.replaceState(null, '', location.pathname + location.search);
+  // Cancelling an invite keeps the local game going; leaving an online game starts a fresh one.
   if (wasPlaying) {
     chess.reset();
+    clearGameState();
     ground.set({ orientation: 'white' });
   }
   sync();
 }
 
-function resetGame() {
-  chess.reset();
+/** Forget everything about the current game beyond the position itself. */
+function clearGameState() {
   state.resigned = null;
   state.illegal = null;
+  state.picked = null;
+  state.points = { w: 0, b: 0 };
+  state.notice = null;
+  state.peekFen = null;
+}
+
+function resetGame() {
+  chess.reset();
+  clearGameState();
   promotionEl.hidden = true;
   sync();
 }
@@ -436,6 +591,7 @@ const actions: Record<string, () => void> = {
     // An illegal move never reached the position, so taking it back just cancels the loss.
     if (state.illegal) state.illegal = null;
     else chess.undo();
+    state.picked = null;
     sync();
   },
   flip() {
@@ -474,6 +630,9 @@ const actions: Record<string, () => void> = {
     if (!isOver() && !confirm('Offer a rematch? The current game will be abandoned if accepted.')) return;
     online.send({ type: 'rematch-offer' });
     statusEl.textContent = 'Rematch offered — waiting for your opponent…';
+  },
+  peek() {
+    startPeek();
   },
   replay() {
     coordinates.start();

@@ -21,6 +21,8 @@ Also available: **Local mode** — two players on the same device (pass-and-play
 | **Disguised** | Every piece looks like a pawn and legal moves aren't shown. Win by checkmate — or when your opponent tries an illegal move. |
 | **Disguised opponent** | Like Disguised, but only your opponent's pieces look like pawns. |
 | **Disguised self** | Like Disguised, but only your own pieces look like pawns. In pass-and-play, "your" pieces are the side to move. |
+| **Invisible** | No pieces are shown at all — click a piece's square, then where it goes. Win by checkmate — or when your opponent tries an illegal move. |
+| **Points** | Like Invisible, but scored: a peek shows the pieces for 3 seconds and gives your opponent 1 point, an illegal move gives them 2, and checkmate is worth 10. The higher score wins when the game ends. |
 | **Chess960 (Fischer Random)** | Back-rank pieces are shuffled at the start. |
 | **King of the Hill** | Win by getting your king to one of the four center squares. |
 | **Three-Check** | Win by giving check three times. |
@@ -86,6 +88,8 @@ chessooly does not collect, store or share any personal data. There is no backen
 - [x] Board + local pass-and-play
 - [x] Online play via invite link
 - [x] Disguised modes (all pieces, opponent's, or your own)
+- [x] Invisible mode
+- [x] Points mode
 - [ ] Play vs. Stockfish
 - [ ] Chess960, King of the Hill, Three-Check
 - [ ] Atomic, Horde, Fog of War
