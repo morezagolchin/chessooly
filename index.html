@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>chessooly</title>
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>chessooly</h1>
+      <span id="mode" class="mode">Local game · pass and play</span>
+    </header>
+
+    <main class="layout">
+      <section class="board-area">
+        <div id="board" class="board"></div>
+        <div id="promotion" class="promotion" hidden>
+          <div class="promotion-box" role="dialog" aria-label="Choose promotion piece">
+            <p>Promote to</p>
+            <div class="promotion-choices"></div>
+            <button type="button" class="link" data-action="cancel-promotion">Cancel</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <p id="status" class="status" aria-live="polite"></p>
+
+        <div class="controls local-only">
+          <button type="button" data-action="new">New game</button>
+          <button type="button" data-action="undo">Undo</button>
+          <button type="button" data-action="flip">Flip board</button>
+        </div>
+
+        <label class="toggle local-only">
+          <input type="checkbox" id="auto-flip" />
+          Flip board after each move
+        </label>
+
+        <div class="controls online-only">
+          <button type="button" data-action="resign">Resign</button>
+          <button type="button" data-action="rematch">Rematch</button>
+          <button type="button" data-action="flip">Flip board</button>
+          <button type="button" class="link" data-action="leave">Leave game</button>
+        </div>
+
+        <section class="online card">
+          <h2>Play a friend online</h2>
+          <div id="online-idle">
+            <p class="hint">Create an invite link and send it to your friend. Moves go directly between your browsers.</p>
+            <button type="button" data-action="invite">Create invite link</button>
+          </div>
+          <div id="online-invite" hidden>
+            <label class="hint" for="invite-link">Send this link to your friend:</label>
+            <div class="invite-row">
+              <input id="invite-link" type="text" readonly />
+              <button type="button" data-action="copy-link">Copy</button>
+            </div>
+            <p class="hint">Waiting for your friend to join… <button type="button" class="link" data-action="leave">Cancel</button></p>
+          </div>
+          <p id="online-info" class="hint" aria-live="polite"></p>
+        </section>
+
+        <h2>Moves</h2>
+        <ol id="moves" class="moves"></ol>
+      </aside>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
