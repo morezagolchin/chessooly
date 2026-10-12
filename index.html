@@ -12,59 +12,105 @@
       <span id="mode" class="mode">Local game · pass and play</span>
     </header>
 
-    <main class="layout">
-      <section class="board-area">
-        <div id="board" class="board"></div>
-        <div id="promotion" class="promotion" hidden>
-          <div class="promotion-box" role="dialog" aria-label="Choose promotion piece">
-            <p>Promote to</p>
-            <div class="promotion-choices"></div>
-            <button type="button" class="link" data-action="cancel-promotion">Cancel</button>
-          </div>
-        </div>
-      </section>
+    <main class="app-shell">
+      <aside class="sidebar" aria-label="Game modes">
+        <p class="sidebar-label">Game modes</p>
 
-      <aside class="panel">
-        <p id="status" class="status" aria-live="polite"></p>
+        <button type="button" class="mode-option is-active" data-variant="classic" aria-pressed="true">
+          <span class="mode-name">Classic</span>
+          <span class="mode-meta">Standard rules</span>
+        </button>
 
-        <div class="controls local-only">
-          <button type="button" data-action="new">New game</button>
-          <button type="button" data-action="undo">Undo</button>
-          <button type="button" data-action="flip">Flip board</button>
-        </div>
+        <button type="button" class="mode-option" data-variant="disguised" aria-pressed="false">
+          <span class="mode-name">Disguised</span>
+          <span class="mode-meta">Every piece looks like a pawn</span>
+        </button>
 
-        <label class="toggle local-only">
-          <input type="checkbox" id="auto-flip" />
-          Flip board after each move
-        </label>
+        <button type="button" class="mode-option" data-variant="disguised-opponent" aria-pressed="false">
+          <span class="mode-name">Disguised opponent</span>
+          <span class="mode-meta">Their pieces look like pawns</span>
+        </button>
 
-        <div class="controls online-only">
-          <button type="button" data-action="resign">Resign</button>
-          <button type="button" data-action="rematch">Rematch</button>
-          <button type="button" data-action="flip">Flip board</button>
-          <button type="button" class="link" data-action="leave">Leave game</button>
-        </div>
+        <button type="button" class="mode-option" data-variant="disguised-self" aria-pressed="false">
+          <span class="mode-name">Disguised self</span>
+          <span class="mode-meta">Your own pieces look like pawns</span>
+        </button>
 
-        <section class="online card">
-          <h2>Play a friend online</h2>
-          <div id="online-idle">
-            <p class="hint">Create an invite link and send it to your friend. Moves go directly between your browsers.</p>
-            <button type="button" data-action="invite">Create invite link</button>
-          </div>
-          <div id="online-invite" hidden>
-            <label class="hint" for="invite-link">Send this link to your friend:</label>
-            <div class="invite-row">
-              <input id="invite-link" type="text" readonly />
-              <button type="button" data-action="copy-link">Copy</button>
+        <p class="sidebar-label">Training</p>
+
+        <button type="button" class="mode-option" data-training="coordinates" aria-pressed="false">
+          <span class="mode-name">Coordinates</span>
+          <span class="mode-meta">Click the square that's named</span>
+        </button>
+      </aside>
+
+      <div class="layout">
+        <section class="board-area">
+          <div id="board" class="board"></div>
+          <p id="coord-prompt" class="coord-prompt training-only" aria-live="polite"></p>
+          <div id="promotion" class="promotion" hidden>
+            <div class="promotion-box" role="dialog" aria-label="Choose promotion piece">
+              <p>Promote to</p>
+              <div class="promotion-choices"></div>
+              <button type="button" class="link" data-action="cancel-promotion">Cancel</button>
             </div>
-            <p class="hint">Waiting for your friend to join… <button type="button" class="link" data-action="leave">Cancel</button></p>
           </div>
-          <p id="online-info" class="hint" aria-live="polite"></p>
         </section>
 
-        <h2>Moves</h2>
-        <ol id="moves" class="moves"></ol>
-      </aside>
+        <aside class="panel">
+          <p id="coord-status" class="status training-only" aria-live="polite"></p>
+          <p class="hint training-only">Click the square named under the board. Keep going until you miss one.</p>
+          <div class="controls training-only">
+            <button type="button" id="coord-replay" data-action="replay" hidden>Replay</button>
+            <button type="button" data-action="flip">Flip board</button>
+          </div>
+
+          <p id="status" class="status" aria-live="polite"></p>
+
+          <p class="hint disguised-only">
+            Disguised pieces look like pawns and legal moves aren't shown — keep track of what's what.
+            Checkmate wins, and so does your opponent trying an illegal move.
+          </p>
+
+          <div class="controls local-only">
+            <button type="button" data-action="new">New game</button>
+            <button type="button" data-action="undo">Undo</button>
+            <button type="button" data-action="flip">Flip board</button>
+          </div>
+
+          <label class="toggle local-only">
+            <input type="checkbox" id="auto-flip" />
+            Flip board after each move
+          </label>
+
+          <div class="controls online-only">
+            <button type="button" data-action="resign">Resign</button>
+            <button type="button" data-action="rematch">Rematch</button>
+            <button type="button" data-action="flip">Flip board</button>
+            <button type="button" class="link" data-action="leave">Leave game</button>
+          </div>
+
+          <section class="online card">
+            <h2>Play a friend online</h2>
+            <div id="online-idle">
+              <p class="hint">Create an invite link and send it to your friend. Moves go directly between your browsers.</p>
+              <button type="button" data-action="invite">Create invite link</button>
+            </div>
+            <div id="online-invite" hidden>
+              <label class="hint" for="invite-link">Send this link to your friend:</label>
+              <div class="invite-row">
+                <input id="invite-link" type="text" readonly />
+                <button type="button" data-action="copy-link">Copy</button>
+              </div>
+              <p class="hint">Waiting for your friend to join… <button type="button" class="link" data-action="leave">Cancel</button></p>
+            </div>
+            <p id="online-info" class="hint" aria-live="polite"></p>
+          </section>
+
+          <h2>Moves</h2>
+          <ol id="moves" class="moves"></ol>
+        </aside>
+      </div>
     </main>
 
     <script type="module" src="/src/main.ts"></script>

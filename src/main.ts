@@ -1,4 +1,4 @@
-import { Chess, type Square } from 'chess.js';
+import { Chess, SQUARES, type Square } from 'chess.js';
 import { Chessground } from 'chessground';
 import type { Api } from 'chessground/api';
 import type { Color, Key } from 'chessground/types';
@@ -8,19 +8,23 @@ import 'chessground/assets/chessground.brown.css';
 import 'chessground/assets/chessground.cburnett.css';
 import './style.css';
 
-import { Online, inviteIdFromUrl, inviteLink, type Message } from './online';
+import { CoordinateTrainer } from './coordinates';
+import { Online, inviteIdFromUrl, inviteLink, type Message, type Variant } from './online';
 
 type PromotionPiece = 'q' | 'r' | 'b' | 'n';
 type Side = 'w' | 'b';
 
 const chess = new Chess();
 
-/** Online game state. In local mode both sides are played on this device. */
+/** Game state beyond the position. In local mode both sides are played on this device. */
 const state = {
   mode: 'local' as 'local' | 'online',
+  variant: 'classic' as Variant,
   role: null as 'host' | 'guest' | null,
   myColor: 'w' as Side,
   resigned: null as Side | null,
+  /** Disguised modes: an illegal move that was tried, which loses the game for that side. */
+  illegal: null as { side: Side; from: Square; to: Square } | null,
   disconnected: false,
 };
 
@@ -35,6 +39,7 @@ const onlineIdleEl = $<HTMLDivElement>('#online-idle');
 const onlineInviteEl = $<HTMLDivElement>('#online-invite');
 const inviteLinkEl = $<HTMLInputElement>('#invite-link');
 const onlineInfoEl = $<HTMLParagraphElement>('#online-info');
+const modeButtons = document.querySelectorAll<HTMLButtonElement>('.mode-option');
 
 const ground: Api = Chessground(boardEl, {
   movable: {
@@ -44,12 +49,19 @@ const ground: Api = Chessground(boardEl, {
   },
   premovable: { enabled: false },
   highlight: { lastMove: true, check: true },
+  events: { select: (key) => trainer.click(key) },
+});
+
+const trainer = new CoordinateTrainer(ground, {
+  prompt: $('#coord-prompt'),
+  status: $('#coord-status'),
+  replay: $<HTMLButtonElement>('#coord-replay'),
 });
 
 const colorName = (side: Side): Color => (side === 'w' ? 'white' : 'black');
 const turnColor = (): Color => colorName(chess.turn());
 const opposite = (side: Side): Side => (side === 'w' ? 'b' : 'w');
-const isOver = () => chess.isGameOver() || state.resigned !== null;
+const isOver = () => chess.isGameOver() || state.resigned !== null || state.illegal !== null;
 
 /** Legal destinations for every piece of the side to move, in chessground's format. */
 function legalDests(): Map<Key, Key[]> {
@@ -62,14 +74,49 @@ function legalDests(): Map<Key, Key[]> {
   return dests;
 }
 
+/** Disguised modes: any piece of the side to move may go to any square not holding one of its own pieces. */
+function anyDests(): Map<Key, Key[]> {
+  const own = SQUARES.filter((sq) => chess.get(sq)?.color === chess.turn());
+  const others = SQUARES.filter((sq) => chess.get(sq)?.color !== chess.turn());
+  return new Map(own.map((sq) => [sq, others]));
+}
+
+/** The sides whose pieces are drawn as pawns for whoever is at the board. Everything is revealed once the game ends. */
+function hiddenSides(): Side[] {
+  if (isOver()) return [];
+  // In pass and play, "you" are the side to move.
+  const me = state.mode === 'online' ? state.myColor : chess.turn();
+  switch (state.variant) {
+    case 'classic':
+      return [];
+    case 'disguised':
+      return ['w', 'b'];
+    case 'disguised-opponent':
+      return [opposite(me)];
+    case 'disguised-self':
+      return [me];
+  }
+}
+
+/** The position in FEN with the given sides' pieces shown as pawns of their colour. */
+function disguise(fen: string, sides: Side[]): string {
+  let board = fen.split(' ')[0];
+  if (sides.includes('w')) board = board.replace(/[NBRQK]/g, 'P');
+  if (sides.includes('b')) board = board.replace(/[nbrqk]/g, 'p');
+  return board;
+}
+
 function onBoardMove(orig: Key, dest: Key) {
   const from = orig as Square;
   const to = dest as Square;
-  const isPromotion = chess
-    .moves({ square: from, verbose: true })
-    .some((m) => m.to === to && m.promotion);
+  const candidates = chess.moves({ square: from, verbose: true }).filter((m) => m.to === to);
 
-  if (isPromotion) {
+  if (!candidates.length) {
+    // Only reachable in the disguised modes, where the board offers every square.
+    state.illegal = { side: chess.turn(), from, to };
+    if (state.mode === 'online') online.send({ type: 'illegal', from, to });
+    sync();
+  } else if (candidates.some((m) => m.promotion)) {
     askPromotion(from, to);
   } else {
     play(chess.move({ from, to }).san);
@@ -118,6 +165,16 @@ function statusText(): string {
     if (online) return state.resigned === state.myColor ? 'You resigned' : 'Your opponent resigned — you win';
     return `${state.resigned === 'w' ? 'White' : 'Black'} resigned`;
   }
+  if (state.illegal) {
+    const { side: mover, from, to } = state.illegal;
+    const move = `${from}–${to}`;
+    if (online) {
+      return mover === state.myColor
+        ? `Illegal move (${move}) — you lose`
+        : `Your opponent tried an illegal move (${move}) — you win!`;
+    }
+    return `Illegal move by ${mover === 'w' ? 'White' : 'Black'} (${move}) — ${mover === 'w' ? 'Black' : 'White'} wins`;
+  }
   if (chess.isCheckmate()) {
     if (online) return chess.turn() === state.myColor ? 'Checkmate — you lose' : 'Checkmate — you win!';
     return `Checkmate — ${other} wins`;
@@ -136,7 +193,11 @@ function statusText(): string {
 }
 
 function renderMoves() {
-  const history = chess.history();
+  // Standard notation names the pieces, so disguised games list squares only.
+  const hidden = hiddenSides().length > 0;
+  const history = chess
+    .history({ verbose: true })
+    .map((m) => (hidden ? `${m.from}${m.captured ? '×' : '–'}${m.to}` : m.san));
   const rows: HTMLLIElement[] = [];
   for (let i = 0; i < history.length; i += 2) {
     const li = document.createElement('li');
@@ -149,27 +210,46 @@ function renderMoves() {
 
 /** Push the current game state from chess.js to the board and side panel. */
 function sync() {
+  const online = state.mode === 'online';
+
+  document.body.classList.toggle('is-online', online);
+  document.body.classList.toggle('is-training', trainer.active);
+  document.body.dataset.variant = state.variant;
+  for (const button of modeButtons) {
+    const active = trainer.active ? button.dataset.training === 'coordinates' : button.dataset.variant === state.variant;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', String(active));
+    button.disabled = online;
+  }
+  modeEl.textContent = trainer.active
+    ? 'Training · coordinates'
+    : online
+      ? `Online game · you play ${state.myColor === 'w' ? 'White' : 'Black'}`
+      : 'Local game · pass and play';
+
+  // The trainer draws its own board; the game is left as it was until the player comes back to it.
+  if (trainer.active) return;
+
   const last = chess.history({ verbose: true }).at(-1);
   const color = turnColor();
-  const online = state.mode === 'online';
   const canMove = !isOver() && !(online && (state.disconnected || chess.turn() !== state.myColor));
+  const classic = state.variant === 'classic';
+  const hidden = hiddenSides();
 
   ground.set({
-    fen: chess.fen(),
+    fen: disguise(chess.fen(), hidden),
     turnColor: color,
-    check: chess.inCheck() ? color : false,
-    lastMove: last ? [last.from, last.to] : undefined,
+    // Highlighting the checked square would give away which pawn is the king.
+    check: chess.inCheck() && !hidden.includes(chess.turn()) ? color : false,
+    lastMove: state.illegal ? [state.illegal.from, state.illegal.to] : last ? [last.from, last.to] : undefined,
     movable: {
       color: canMove ? color : undefined,
-      dests: canMove ? legalDests() : new Map(),
+      dests: canMove ? (classic ? legalDests() : anyDests()) : new Map(),
+      showDests: classic,
     },
     ...(!online && autoFlipEl.checked ? { orientation: color } : {}),
   });
 
-  document.body.classList.toggle('is-online', online);
-  modeEl.textContent = online
-    ? `Online game · you play ${state.myColor === 'w' ? 'White' : 'Black'}`
-    : 'Local game · pass and play';
   statusEl.textContent = statusText();
   statusEl.classList.toggle('over', isOver() || (online && state.disconnected));
   renderMoves();
@@ -183,7 +263,7 @@ const online = new Online({
     // The host picks colours at random and tells the guest which side they play.
     const guestColor: Side = Math.random() < 0.5 ? 'w' : 'b';
     startOnlineGame(opposite(guestColor));
-    online.send({ type: 'hello', guestColor, pgn: chess.pgn() });
+    online.send({ type: 'hello', guestColor, pgn: chess.pgn(), variant: state.variant });
   },
   onMessage: handleMessage,
   onClose() {
@@ -205,9 +285,11 @@ const online = new Online({
 });
 
 function startOnlineGame(myColor: Side, pgn = '') {
+  trainer.stop();
   state.mode = 'online';
   state.myColor = myColor;
   state.resigned = null;
+  state.illegal = null;
   state.disconnected = false;
   promotionEl.hidden = true;
   if (pgn) chess.loadPgn(pgn);
@@ -222,7 +304,9 @@ function startOnlineGame(myColor: Side, pgn = '') {
 function handleMessage(msg: Message) {
   switch (msg.type) {
     case 'hello':
-      if (state.role === 'guest') startOnlineGame(msg.guestColor, msg.pgn);
+      if (state.role !== 'guest') break;
+      state.variant = msg.variant;
+      startOnlineGame(msg.guestColor, msg.pgn);
       break;
     case 'move':
       if (state.mode !== 'online' || chess.turn() === state.myColor) break;
@@ -231,6 +315,11 @@ function handleMessage(msg: Message) {
       } catch {
         onlineInfoEl.textContent = 'Received an invalid move — the games may be out of sync.';
       }
+      sync();
+      break;
+    case 'illegal':
+      if (state.mode !== 'online' || chess.turn() === state.myColor) break;
+      state.illegal = { side: opposite(state.myColor), from: msg.from, to: msg.to };
       sync();
       break;
     case 'resign':
@@ -265,6 +354,7 @@ function leaveOnline() {
   state.mode = 'local';
   state.role = null;
   state.resigned = null;
+  state.illegal = null;
   state.disconnected = false;
   onlineInfoEl.textContent = '';
   showOnlineIdle();
@@ -276,15 +366,46 @@ function leaveOnline() {
   sync();
 }
 
+function resetGame() {
+  chess.reset();
+  state.resigned = null;
+  state.illegal = null;
+  promotionEl.hidden = true;
+  sync();
+}
+
+function switchVariant(variant: Variant) {
+  if (state.mode === 'online') return;
+  if (variant === state.variant) {
+    // Back from training to the game that was left there.
+    if (trainer.active) {
+      trainer.stop();
+      sync();
+    }
+    return;
+  }
+  if (chess.history().length && !isOver() && !confirm('Switch game mode? The current game will be lost.')) return;
+  trainer.stop();
+  state.variant = variant;
+  resetGame();
+}
+
+function startTraining() {
+  if (state.mode === 'online' || trainer.active) return;
+  promotionEl.hidden = true;
+  trainer.start();
+  sync();
+}
+
 const actions: Record<string, () => void> = {
   new() {
     if (chess.history().length && !confirm('Start a new game?')) return;
-    chess.reset();
-    state.resigned = null;
-    sync();
+    resetGame();
   },
   undo() {
-    chess.undo();
+    // An illegal move never reached the position, so taking it back just cancels the loss.
+    if (state.illegal) state.illegal = null;
+    else chess.undo();
     sync();
   },
   flip() {
@@ -324,6 +445,9 @@ const actions: Record<string, () => void> = {
     online.send({ type: 'rematch-offer' });
     statusEl.textContent = 'Rematch offered — waiting for your opponent…';
   },
+  replay() {
+    trainer.start();
+  },
   'cancel-promotion'() {
     promotionEl.hidden = true;
     sync(); // snap the pawn back
@@ -331,8 +455,12 @@ const actions: Record<string, () => void> = {
 };
 
 document.addEventListener('click', (e) => {
-  const action = (e.target as HTMLElement).closest<HTMLElement>('[data-action]')?.dataset.action;
+  const target = e.target as HTMLElement;
+  const action = target.closest<HTMLElement>('[data-action]')?.dataset.action;
   if (action) actions[action]?.();
+  const variant = target.closest<HTMLElement>('.mode-option[data-variant]')?.dataset.variant;
+  if (variant) switchVariant(variant as Variant);
+  if (target.closest('.mode-option[data-training]')) startTraining();
 });
 
 window.addEventListener('beforeunload', () => online.close());

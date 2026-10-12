@@ -43,7 +43,7 @@ body {
   align-items: baseline;
   gap: 12px;
   padding: 16px;
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -57,14 +57,119 @@ body {
   font-size: 0.9rem;
 }
 
+.app-shell {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px 32px;
+}
+
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.04);
+  position: sticky;
+  top: 16px;
+}
+
+.sidebar-label {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.mode-option + .sidebar-label {
+  margin-top: 8px;
+}
+
+.mode-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.mode-option.is-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.mode-option:disabled {
+  cursor: not-allowed;
+}
+
+.mode-option:disabled:not(.is-active) {
+  opacity: 0.55;
+}
+
+.mode-name {
+  font-weight: 700;
+}
+
+.mode-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
 .layout {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 24px;
-  padding: 0 16px 32px;
-  max-width: 1000px;
-  margin: 0 auto;
+  flex: 1;
+}
+
+/* Too narrow for the sidebar beside the board: stack it on top, with the modes side by side. */
+@media (max-width: 899px) {
+  .app-shell {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sidebar {
+    position: static;
+    width: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .sidebar-label {
+    flex-basis: 100%;
+    margin: 0;
+  }
+
+  .mode-option {
+    flex: 1 1 140px;
+    width: auto;
+    padding: 8px 12px;
+  }
+
+  /* Keep the modes compact so the board (and the trainer's prompt under it) stays on screen. */
+  .mode-meta {
+    display: none;
+  }
 }
 
 .board-area {
@@ -210,6 +315,32 @@ body.is-online .local-only,
 body.is-online .online,
 body:not(.is-online) .online-only {
   display: none;
+}
+
+body:not([data-variant^='disguised']) .disguised-only {
+  display: none;
+}
+
+/* Coordinates trainer: its own panel, and no labels on the board to read the answer from. */
+body.is-training .panel > :not(.training-only),
+body.is-training #board coords,
+body:not(.is-training) .training-only {
+  display: none;
+}
+
+.coord-prompt {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+
+#board square.coord-answer {
+  background: rgb(60 160 80 / 0.7);
+}
+
+#board square.coord-miss {
+  background: rgb(210 50 40 / 0.6);
 }
 
 .card {
