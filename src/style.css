@@ -1,117 +1,204 @@
+/* Look and palette follow morezagolchin.github.io (its style.css). */
 :root {
-  --bg: #f6f3ee;
-  --surface: #ffffff;
-  --text: #24211d;
-  --muted: #6f675d;
-  --border: #ded7cc;
-  --accent: #8a5a2b;
-  --accent-text: #ffffff;
-  --win: #b3261e;
+  color-scheme: light dark;
 
-  color-scheme: light;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --bg: #c0beb6;
+  --surface: #e3ddcd;
+  --border: rgb(139 136 128 / 0.45); /* #8b8880 */
+  /* Border around the top bar, sidebar, board and side panel. */
+  --section-border: 5px solid var(--border);
+  --text: #2f3331;
+  /* #2f3331 and #8b8880 mixed: #8b8880 alone is too faint for text on #e3ddcd. */
+  --muted: #5d5e59;
+  /* Links and focus rings. */
+  --link: #2f3331;
+  /* Fills only (selected mode, primary buttons, game over): too light for text on light backgrounds. */
+  --accent: #f6e84a;
+  --on-accent: #2f3331;
+  /* Plain buttons and hovered modes. */
+  --control: rgb(139 136 128 / 0.22);
+  --control-hover: rgb(139 136 128 / 0.38);
+  --pattern: rgb(139 136 128 / 0.3);
+
+  /* Board squares. The dark squares (#8b8880) are drawn by the cg-board background image. */
+  --square-light: #e3ddcd;
+
+  /* Spacing between the boxes and the window edges. */
+  --gap: clamp(1.25rem, 2vw, 1.75rem);
+  /* Padding inside the boxes. */
+  --pad: clamp(1rem, 2vw, 1.25rem);
+  --radius: 8px;
+  /* Corners of things inset in a box, like the modes in the sidebar. */
+  --inset: 0.3rem;
+  --inner-radius: calc(var(--radius) - var(--inset));
+  --shell: 1280px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1c1a17;
-    --surface: #26231f;
-    --text: #ece6dc;
-    --muted: #a59d91;
-    --border: #3a352e;
-    --accent: #c98d4f;
-    --accent-text: #1c1a17;
-    --win: #ff8a80;
-
-    color-scheme: dark;
+    --bg: #2f3331;
+    --surface: #383c39; /* #2f3331 lifted slightly toward #8b8880 */
+    --border: rgb(139 136 128 / 0.3);
+    --text: #e3ddcd;
+    --muted: #c0beb6;
+    --link: #f6e84a;
+    --control: rgb(139 136 128 / 0.2);
+    --control-hover: rgb(139 136 128 / 0.34);
+    --pattern: rgb(139 136 128 / 0.14);
+    --square-light: #c0beb6;
   }
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  background: var(--bg);
-  color: var(--text);
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 1rem/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Chess piece background: fixed to the viewport, so the page scrolls over it.
+   Filled by pieces-bg.ts. The fonts are ones that have the chess symbols. */
+.pieces-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  padding: 0.25rem 0.5rem;
+  color: var(--pattern);
+  font: 1.125rem/1.6 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', 'DejaVu Sans', sans-serif;
+  letter-spacing: 0.45em;
+  word-break: break-all;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Wider than the window by more than one piece, so every row reaches the right
+   edge and is cut off there, like the last rows at the bottom. */
+.pieces-bg > div {
+  width: calc(100% + 3em);
+}
+
+/* A box like the site's panels and tab bars. */
+.topbar,
+.sidebar,
+.board-area,
+.panel {
+  background: var(--surface);
+  border: var(--section-border);
+  border-radius: var(--radius);
+}
+
+.topbar,
+.app-shell {
+  position: relative;
+  z-index: 1;
+  width: min(var(--shell), 100% - 2 * var(--gap));
+  margin: 0 auto;
+}
+
+/* Laid out like one of the site's tab bars, with the name as the selected tab. */
 .topbar {
   display: flex;
-  align-items: baseline;
-  gap: 12px;
-  padding: 16px;
-  max-width: 1200px;
-  margin: 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.9rem;
+  margin-top: var(--gap);
+  margin-bottom: calc(var(--gap) / 2);
+  padding: var(--inset);
 }
 
 .topbar h1 {
   margin: 0;
-  font-size: 1.5rem;
+  padding: 0.45rem 0.9rem;
+  background: var(--accent);
+  border-radius: var(--inner-radius);
+  color: var(--on-accent);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .mode {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .app-shell {
   display: flex;
-  align-items: flex-start;
-  gap: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 16px 32px;
+  gap: var(--gap);
+  margin-bottom: var(--gap);
 }
 
+/* The modes are a vertical tab bar. */
 .sidebar {
-  width: 220px;
+  position: sticky;
+  top: var(--gap);
+  align-self: flex-start;
+  width: 240px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 10px 24px rgb(0 0 0 / 0.04);
-  position: sticky;
-  top: 16px;
+  gap: 0.15rem;
+  padding: var(--inset);
 }
 
 .sidebar-label {
-  margin: 0 0 4px;
-  font-size: 0.72rem;
-  font-weight: 700;
+  margin: 0.5rem 0.9rem 0.25rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted);
 }
 
 .mode-option + .sidebar-label {
-  margin-top: 8px;
+  margin-top: 1rem;
 }
 
 .mode-option {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
-  text-align: left;
+  gap: 0.1rem;
   width: 100%;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: transparent;
+  padding: 0.55rem 0.9rem;
+  background: none;
+  border-radius: var(--inner-radius);
   color: var(--text);
+  text-align: left;
+}
+
+.mode-option:hover {
+  background: var(--control);
 }
 
 .mode-option.is-active {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.mode-option:focus-visible {
+  outline-offset: 1px;
 }
 
 .mode-option:disabled {
@@ -119,27 +206,39 @@ body {
 }
 
 .mode-option:disabled:not(.is-active) {
+  background: none;
   opacity: 0.55;
 }
 
 .mode-name {
-  font-weight: 700;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .mode-meta {
-  font-size: 0.78rem;
   color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.35;
 }
 
+.mode-option.is-active .mode-meta {
+  color: inherit;
+  opacity: 0.75;
+}
+
+/* The side panel stretches to the board's height (or more, if it needs it). */
 .layout {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 24px;
+  gap: var(--gap);
   flex: 1;
+  min-width: 0;
 }
 
-/* Too narrow for the sidebar beside the board: stack it on top, with the modes side by side. */
+/* Too narrow for the sidebar beside the board: stack it on top, with the modes
+   wrapping like the site's tabs on a phone. */
 @media (max-width: 899px) {
   .app-shell {
     flex-direction: column;
@@ -148,114 +247,172 @@ body {
 
   .sidebar {
     position: static;
+    align-self: auto;
     width: auto;
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 8px;
-    padding: 12px;
+    gap: 0.25rem;
   }
 
-  .sidebar-label {
+  .sidebar-label,
+  .mode-option + .sidebar-label {
     flex-basis: 100%;
-    margin: 0;
+    margin: 0.3rem 0.6rem 0;
   }
 
   .mode-option {
-    flex: 1 1 140px;
+    flex: 1 1 auto;
     width: auto;
-    padding: 8px 12px;
+    padding: 0.45rem 0.8rem;
   }
 
   /* Keep the modes compact so the board (and the trainer's prompt under it) stays on screen. */
   .mode-meta {
     display: none;
   }
+
+  .layout {
+    justify-content: center;
+  }
 }
 
+/* The board sits flush in its box, which frames it with the section border. */
 .board-area {
   position: relative;
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin: 0 auto;
 }
 
+/* The size to aim for: fitBoard() in main.ts trims it to whole device pixels per square. */
 .board {
-  width: min(calc(100vw - 32px), 75vh, 600px);
+  width: min(100vw - 2 * var(--gap) - 10px, 75vh, 600px);
   aspect-ratio: 1;
 }
 
 .panel {
-  flex: 1 1 260px;
-  max-width: 360px;
+  flex: 1 1 280px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.75rem;
+  padding: var(--pad);
+}
+
+@media (max-width: 899px) {
+  .panel {
+    flex-basis: 100%;
+  }
 }
 
 .status {
   margin: 0;
-  padding: 12px 14px;
-  background: var(--surface);
+  padding: 0.7rem 0.9rem;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   font-weight: 600;
 }
 
 .status.over {
-  color: var(--win);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
 }
 
 .controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 0.4rem;
 }
 
 button {
+  margin: 0;
+  padding: 0.45rem 0.85rem;
+  background: var(--control);
+  border: 0;
+  border-radius: var(--inner-radius);
+  color: var(--text);
   font: inherit;
-  padding: 8px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--accent-text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.4;
   cursor: pointer;
 }
 
 button:hover {
-  filter: brightness(1.08);
+  background: var(--control-hover);
+}
+
+button:focus-visible {
+  outline-offset: 1px;
+}
+
+button.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+button.primary:hover {
+  background: color-mix(in srgb, var(--accent) 88%, var(--text));
 }
 
 button.link {
+  padding: 0;
   background: none;
-  border: none;
   color: var(--muted);
+  font-weight: 400;
   text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+button.link:hover {
+  color: var(--text);
+  text-decoration-thickness: 2px;
+}
+
+.controls button.link {
+  padding: 0.45rem 0.4rem;
 }
 
 .toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
   color: var(--muted);
   font-size: 0.95rem;
 }
 
-.panel h2 {
-  margin: 8px 0 0;
-  font-size: 1rem;
+.toggle input {
+  accent-color: var(--accent);
 }
 
+.panel h2 {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Fills the rest of the panel, and scrolls. */
 .moves {
+  flex: 1 1 0;
+  min-height: 10rem;
   margin: 0;
-  padding: 8px 8px 8px 40px;
-  max-height: 320px;
-  min-height: 48px;
+  padding: 0.5rem 0.5rem 0.5rem 2.5rem;
   overflow-y: auto;
-  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   font-variant-numeric: tabular-nums;
 }
 
 .moves li {
   padding: 2px 0;
+}
+
+.moves li::marker {
+  color: var(--muted);
 }
 
 .moves li span {
@@ -270,7 +427,8 @@ button.link {
   z-index: 10;
   display: grid;
   place-items: center;
-  background: rgb(0 0 0 / 0.45);
+  background: rgb(47 51 49 / 0.55);
+  border-radius: calc(var(--radius) - 5px);
 }
 
 .promotion[hidden] {
@@ -278,20 +436,22 @@ button.link {
 }
 
 .promotion-box {
-  padding: 16px;
+  padding: var(--pad);
   background: var(--surface);
-  border-radius: 10px;
+  border: var(--section-border);
+  border-radius: var(--radius);
   text-align: center;
 }
 
 .promotion-box p {
-  margin: 0 0 8px;
+  margin: 0 0 0.75rem;
   font-weight: 600;
 }
 
 .promotion-choices {
   display: flex;
-  gap: 8px;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
 }
 
 .promotion-piece {
@@ -299,8 +459,10 @@ button.link {
   width: 64px;
   height: 64px;
   padding: 0;
-  background: var(--bg);
-  border: 1px solid var(--border);
+}
+
+.promotion-piece:hover {
+  background: var(--accent);
 }
 
 .promotion-piece piece {
@@ -328,7 +490,7 @@ body:not([data-variant='points']) .points-only {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .points {
@@ -350,7 +512,7 @@ body[data-training] .panel > :not(.trainer-ui) {
 .trainer-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
 .trainer-panel[hidden] {
@@ -363,37 +525,30 @@ body[data-training='coordinates'] #board coords {
 }
 
 .coord-prompt {
-  margin: 12px 0 0;
+  margin: 0;
+  padding: 0.25rem 0 0.5rem;
   text-align: center;
   font-size: 2.5rem;
   font-weight: 700;
-}
-
-#board square.coord-answer {
-  background: rgb(60 160 80 / 0.7);
-}
-
-#board square.coord-miss {
-  background: rgb(210 50 40 / 0.6);
-}
-
-#board square.tour-visited {
-  background: rgb(0 0 0 / 0.14);
+  line-height: 1.3;
 }
 
 .card {
-  padding: 12px 14px;
-  background: var(--surface);
+  padding: 0.75rem 0.9rem;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .card h2 {
-  margin: 0 0 8px;
+  margin: 0 0 0.5rem;
+  color: var(--text);
+  font-size: 1rem;
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 .hint {
-  margin: 0 0 8px;
+  margin: 0 0 0.5rem;
   color: var(--muted);
   font-size: 0.9rem;
 }
@@ -403,28 +558,100 @@ body[data-training='coordinates'] #board coords {
 }
 
 .hint button.link {
-  padding: 0;
   font-size: inherit;
 }
 
 #online-info {
-  margin: 8px 0 0;
+  margin: 0.5rem 0 0;
 }
 
 .invite-row {
   display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
 }
 
 .invite-row input {
   flex: 1;
   min-width: 0;
+  padding: 0.35rem 0.5rem;
+  background: var(--control);
+  border: 1px solid var(--border);
+  border-radius: var(--inner-radius);
+  color: var(--text);
   font: inherit;
   font-size: 0.85rem;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button,
+  .status {
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+}
+
+/* Board, in the site's palette: replaces chessground's brown theme. */
+
+#board cg-board {
+  background-color: var(--square-light);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath fill='%238b8880' d='M1 0h1v1H1zm2 0h1v1H3zm2 0h1v1H5zm2 0h1v1H7zM0 1h1v1H0zm2 0h1v1H2zm2 0h1v1H4zm2 0h1v1H6zM1 2h1v1H1zm2 0h1v1H3zm2 0h1v1H5zm2 0h1v1H7zM0 3h1v1H0zm2 0h1v1H2zm2 0h1v1H4zm2 0h1v1H6zM1 4h1v1H1zm2 0h1v1H3zm2 0h1v1H5zm2 0h1v1H7zM0 5h1v1H0zm2 0h1v1H2zm2 0h1v1H4zm2 0h1v1H6zM1 6h1v1H1zm2 0h1v1H3zm2 0h1v1H5zm2 0h1v1H7zM0 7h1v1H0zm2 0h1v1H2zm2 0h1v1H4zm2 0h1v1H6z'/%3E%3C/svg%3E");
+  /* Round the corners to fit inside the frame's border. */
+  border-radius: calc(var(--radius) - 5px);
+}
+
+#board cg-board square.move-dest {
+  background: radial-gradient(rgb(47 51 49 / 0.35) 22%, transparent 23%);
+}
+
+#board cg-board square.oc.move-dest {
+  background: radial-gradient(transparent 0%, transparent 79%, rgb(47 51 49 / 0.35) 80%);
+}
+
+#board cg-board square.move-dest:hover {
+  background: rgb(246 232 74 / 0.55);
+}
+
+#board cg-board square.last-move {
+  background-color: rgb(246 232 74 / 0.65);
+}
+
+#board cg-board square.selected {
+  background-color: rgb(246 232 74 / 0.85);
+}
+
+#board cg-board square.check {
+  background: radial-gradient(ellipse at center, #c44e29 0%, rgb(196 78 41 / 0.85) 25%, rgb(196 78 41 / 0) 89%);
+}
+
+#board square.coord-answer {
+  background: rgb(77 144 101 / 0.8); /* #4d9065 */
+}
+
+#board square.coord-miss {
+  background: rgb(196 78 41 / 0.75); /* #c44e29 */
+}
+
+#board square.tour-visited {
+  background: rgb(47 51 49 / 0.16);
+}
+
+#board coords {
+  font-family: inherit;
+  font-weight: 600;
+}
+
+/* Rank and file labels contrast with the square they sit on: light on dark squares
+   (a1, a3, … and a1, c1, … from White's side), dark on light ones. */
+#board.orientation-white .ranks :nth-child(odd),
+#board.orientation-white .files :nth-child(odd),
+#board.orientation-black .ranks :nth-child(even),
+#board.orientation-black .files :nth-child(even) {
+  color: #e3ddcd;
+}
+
+#board.orientation-white .ranks :nth-child(even),
+#board.orientation-white .files :nth-child(even),
+#board.orientation-black .ranks :nth-child(odd),
+#board.orientation-black .files :nth-child(odd) {
+  color: #5d5e59;
 }

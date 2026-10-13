@@ -37,7 +37,7 @@ function knightFen(key: Key | undefined): string {
 
 /** The visit number drawn in the middle of a visited square. */
 const visitLabel = (n: number) =>
-  `<text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="system-ui, sans-serif" font-size="38" font-weight="700" fill="#000" fill-opacity="0.45">${n}</text>`;
+  `<text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="system-ui, sans-serif" font-size="38" font-weight="700" fill="#2F3331" fill-opacity="0.6">${n}</text>`;
 
 /** Knight's tour: place a knight anywhere, then visit every square exactly once. */
 export class KnightsTour {

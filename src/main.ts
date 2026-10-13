@@ -3,11 +3,12 @@ import { Chessground } from 'chessground';
 import type { Api } from 'chessground/api';
 import type { Color, Key } from 'chessground/types';
 
+// Board colors come from style.css instead of a chessground theme.
 import 'chessground/assets/chessground.base.css';
-import 'chessground/assets/chessground.brown.css';
 import 'chessground/assets/chessground.cburnett.css';
 import './style.css';
 
+import './pieces-bg';
 import { CoordinateTrainer } from './coordinates';
 import { KnightsTour } from './knights-tour';
 import { Online, inviteIdFromUrl, inviteLink, type Message, type Variant } from './online';
@@ -73,6 +74,21 @@ const pointsEl = $<HTMLParagraphElement>('#points');
 const peekEl = $<HTMLButtonElement>('#peek');
 const modeButtons = document.querySelectorAll<HTMLButtonElement>('.mode-option');
 const trainerEls = document.querySelectorAll<HTMLElement>('.trainer-ui');
+
+/**
+ * Chessground shrinks the board to whole device pixels per square and leaves the rest of #board empty,
+ * which with display scaling or browser zoom shows as a strip on the right and bottom of the frame.
+ * Size #board that way to begin with, so the board fills its frame.
+ */
+function fitBoard() {
+  boardEl.style.width = '';
+  const dpr = window.devicePixelRatio;
+  const square = Math.floor((boardEl.getBoundingClientRect().width * dpr) / 8);
+  // A tenth of a device pixel over, so rounding in layout can't take it below 8 whole squares.
+  boardEl.style.width = `${(square * 8 + 0.1) / dpr}px`;
+}
+fitBoard();
+addEventListener('resize', fitBoard);
 
 const ground: Api = Chessground(boardEl, {
   movable: {

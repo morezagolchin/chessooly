@@ -3,10 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#C0BEB6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#2F3331" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>chessooly</title>
   </head>
   <body>
+    <div class="pieces-bg" aria-hidden="true"></div>
+
     <header class="topbar">
       <h1>chessooly</h1>
       <span id="mode" class="mode">Local game · pass and play</span>
@@ -77,7 +82,7 @@
             <p id="coord-status" class="status" aria-live="polite"></p>
             <p class="hint">Click the square named under the board. Keep going until you miss one.</p>
             <div class="controls">
-              <button type="button" id="coord-replay" data-action="replay" hidden>Replay</button>
+              <button type="button" id="coord-replay" class="primary" data-action="replay" hidden>Replay</button>
               <button type="button" data-action="flip">Flip board</button>
             </div>
           </div>
@@ -141,7 +146,7 @@
             <h2>Play a friend online</h2>
             <div id="online-idle">
               <p class="hint">Create an invite link and send it to your friend. Moves go directly between your browsers.</p>
-              <button type="button" data-action="invite">Create invite link</button>
+              <button type="button" class="primary" data-action="invite">Create invite link</button>
             </div>
             <div id="online-invite" hidden>
               <label class="hint" for="invite-link">Send this link to your friend:</label>
