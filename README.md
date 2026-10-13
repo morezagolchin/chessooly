@@ -23,23 +23,13 @@ Also available: **Local mode** — two players on the same device (pass-and-play
 | **Disguised self** | Like Disguised, but only your own pieces look like pawns. In pass-and-play, "your" pieces are the side to move. |
 | **Invisible** | No pieces are shown at all — click a piece's square, then where it goes. Win by checkmate — or when your opponent tries an illegal move. |
 | **Points** | Like Invisible, but scored: a peek shows the pieces for 3 seconds and gives your opponent 1 point, an illegal move gives them 2, and checkmate is worth 10. The higher score wins when the game ends. |
-| **Chess960 (Fischer Random)** | Back-rank pieces are shuffled at the start. |
-| **King of the Hill** | Win by getting your king to one of the four center squares. |
-| **Three-Check** | Win by giving check three times. |
-| **Atomic** | Captures explode, removing all non-pawn pieces around the square. |
-| **Horde** | One side has 36 pawns against a normal army. |
-| **Fog of War** | You only see the squares your pieces can reach. |
-
-*(Modes are planned / in progress — see the roadmap below.)*
 
 ### Training games
 | Game | Description |
 |------|-------------|
 | **Coordinate trainer** | A square is named under the board — click it. One wrong click ends the round. |
 | **Knight's tour** | Visit every square with a knight exactly once. |
-| **Mate-in-N puzzles** | Solve built-in checkmate puzzles. |
 | **Play vs. computer** | Practise against Stockfish running in your browser, with adjustable strength. |
-| **Blindfold mode** | Play with pieces hidden to train visualisation. |
 
 ## How it works
 
@@ -91,11 +81,8 @@ chessooly does not collect, store or share any personal data. There is no backen
 - [x] Invisible mode
 - [x] Points mode
 - [ ] Play vs. Stockfish
-- [ ] Chess960, King of the Hill, Three-Check
-- [ ] Atomic, Horde, Fog of War
 - [x] Coordinate trainer
 - [x] Knight's tour
-- [ ] Training games (puzzles, blindfold)
 - [ ] Time controls (clocks)
 - [ ] Mobile-friendly layout
 
